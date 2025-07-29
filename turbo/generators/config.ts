@@ -483,7 +483,7 @@ $2.implement_interface({{pascalCase name}}).provide({
             // Check git status
             const status = execCommand('git status --porcelain');
             if (status.length > 0) {
-              return `⚠️  You have uncommitted changes:\n${status}\nPlease commit or stash them first.`;
+              throw new Error(`⚠️  You have uncommitted changes:\n${status}\nPlease commit or stash them first.`);
             }
 
             // Check NPM auth
@@ -491,7 +491,7 @@ $2.implement_interface({{pascalCase name}}).provide({
             
             return "✅ Prerequisites checked successfully";
           } catch (error) {
-            return `❌ Prerequisites check failed: ${error}`;
+            throw new Error(`❌ Prerequisites check failed: ${error}`);
           }
         },
 
@@ -501,7 +501,7 @@ $2.implement_interface({{pascalCase name}}).provide({
             updateVersion(project.path, newVersion);
             return `✅ Updated ${project.path}/package.json to version ${newVersion}`;
           } catch (error) {
-            return `❌ Failed to update version: ${error}`;
+            throw new Error(`❌ Failed to update version: ${error}`);
           }
         },
 
@@ -512,7 +512,7 @@ $2.implement_interface({{pascalCase name}}).provide({
             execCommand(`git commit -m "chore(${project.name}): bump version to ${newVersion}"`);
             return `✅ Version change committed to main repository`;
           } catch (error) {
-            return `❌ Failed to commit changes: ${error}`;
+            throw new Error(`❌ Failed to commit changes: ${error}`);
           }
         },
 
@@ -522,7 +522,7 @@ $2.implement_interface({{pascalCase name}}).provide({
             execCommand('git push origin main');
             return `✅ Pushed to main repository`;
           } catch (error) {
-            return `❌ Failed to push to main repository: ${error}`;
+            throw new Error(`❌ Failed to push to main repository: ${error}`);
           }
         },
 
@@ -532,7 +532,7 @@ $2.implement_interface({{pascalCase name}}).provide({
             execCommand(`npm run ${project.pushScript}`);
             return `✅ Pushed to ${project.subtreeRemote}`;
           } catch (error) {
-            return `❌ Failed to push to subtree: ${error}`;
+            throw new Error(`❌ Failed to push to subtree: ${error}\n\n🚨 PUBLICATION STOPPED: Subtree push failed. Please fix the issue and try again.`);
           }
         },
 
@@ -553,7 +553,7 @@ $2.implement_interface({{pascalCase name}}).provide({
             
             return `✅ Published ${project.name}@${newVersion} to NPM`;
           } catch (error) {
-            return `❌ Failed to publish to NPM: ${error}`;
+            throw new Error(`❌ Failed to publish to NPM: ${error}\n\n🚨 PUBLICATION STOPPED: NPM publish failed. Please fix the issue and try again.`);
           }
         },
 
