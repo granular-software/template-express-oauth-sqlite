@@ -106,7 +106,7 @@ async function main() {
       });
     }
 
-    // Basic client configuration with common development redirect URIs
+    // Basic client configuration with dynamic client registration
     const client = new MCPOAuthClient({
       redirect_uris: [
         redirectURI,
