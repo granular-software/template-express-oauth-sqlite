@@ -41,7 +41,7 @@ async function main() {
 
     // Create client for discovery helpers
     const client = new MCPOAuthClient({
-      redirect_uri: "http://localhost/void",
+      redirect_uris: ["http://localhost/void"],
       client_name: "Refresh CLI",
     });
 

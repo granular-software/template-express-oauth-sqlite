@@ -105,7 +105,7 @@ export interface RefreshTokenRequest {
 
 export interface OAuthClientConfig {
   // Required: OAuth flow configuration
-  redirect_uri: string
+  redirect_uris: string[] // Array of redirect URIs for client registration
   scope?: string
   
   // Required: Client registration details for DCR

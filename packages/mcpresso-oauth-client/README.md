@@ -30,7 +30,12 @@ import { MCPOAuthClient } from 'mcpresso-oauth-client'
 
 // Initialize client - uses Dynamic Client Registration automatically
 const client = new MCPOAuthClient({
-  redirect_uri: 'http://localhost:3000/callback',
+  redirect_uris: [
+    'http://localhost:3000/callback',
+    'http://localhost:3001/oauth/callback',
+    'http://localhost:6274/oauth/callback', // MCP Inspector
+    'http://localhost:5173/oauth/callback', // Vite default
+  ],
   scope: 'read write',
   client_name: 'My Application',
   client_uri: 'http://localhost:3000',
@@ -63,7 +68,12 @@ function App() {
   return (
     <OAuthProvider
       config={{
-        redirect_uri: 'http://localhost:3000/callback',
+        redirect_uris: [
+          'http://localhost:3000/callback',
+          'http://localhost:3001/oauth/callback',
+          'http://localhost:6274/oauth/callback', // MCP Inspector
+          'http://localhost:5173/oauth/callback', // Vite default
+        ],
         scope: 'read write',
         client_name: 'My React App',
         client_uri: 'http://localhost:3000',

@@ -76,7 +76,7 @@ async function main() {
 
     // Prepare redirect URI & optional local server
     let redirectURI = "http://localhost/callback";
-    let callbackURLPromise: Promise<string>;
+    let callbackURLPromise: Promise<string> | undefined;
 
     if (!manualMode) {
       // Spin up temporary local HTTP server
@@ -106,9 +106,18 @@ async function main() {
       });
     }
 
-    // Basic client configuration – adjust defaults as needed.
+    // Basic client configuration with common development redirect URIs
     const client = new MCPOAuthClient({
-      redirect_uri: redirectURI,
+      redirect_uris: [
+        redirectURI,
+        // Common development redirect URIs
+        "http://localhost:3000/oauth/callback",
+        "http://localhost:3001/oauth/callback", 
+        "http://localhost:6274/oauth/callback", // MCP Inspector
+        "http://localhost:8080/oauth/callback",
+        "http://localhost:5173/oauth/callback", // Vite default
+        "http://localhost:4173/oauth/callback", // Vite preview
+      ],
       scope: "openid offline_access", // Ask for minimal scopes plus refresh.
       client_name: "MCPresso CLI Test App",
       client_uri: "https://github.com/granular-software/mcpresso-oauth-client",
@@ -149,6 +158,9 @@ async function main() {
       callbackURL = await prompt("Paste the full callback URL: ");
     } else {
       console.log(colorize("cyan", "Waiting for OAuth server to redirect back…\n"));
+      if (!callbackURLPromise) {
+        throw new Error("Callback promise not initialized");
+      }
       callbackURL = await callbackURLPromise; // Resolved by HTTP listener
       console.log(colorize("green", "Received callback!"));
     }

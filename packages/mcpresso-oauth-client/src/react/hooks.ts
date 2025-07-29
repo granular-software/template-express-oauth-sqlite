@@ -15,7 +15,7 @@ import {
 
 export interface UseOAuthClientConfig {
   // Required: OAuth flow configuration
-  redirect_uri: string
+  redirect_uris: string[]
   scope?: string
   
   // Required: Client registration details for DCR
@@ -44,7 +44,7 @@ export function useOAuthClient(config: UseOAuthClientConfig) {
       clientRef.current = null
       setIsReady(false)
     }
-  }, [config.redirect_uri, config.client_name])
+  	}, [config.redirect_uris, config.client_name])
 
   return {
     client: clientRef.current,

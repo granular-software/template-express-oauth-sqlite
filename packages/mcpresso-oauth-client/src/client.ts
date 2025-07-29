@@ -114,7 +114,7 @@ export class MCPOAuthClient {
 					client_secret: clientSecret,
 					client_id_issued_at: Math.floor(Date.now() / 1000),
 					client_secret_expires_at: 0,
-					redirect_uris: [this.config.redirect_uri],
+					redirect_uris: this.config.redirect_uris,
 					client_name: this.config.client_name,
 					client_uri: this.config.client_uri,
 					scope: this.config.scope,
@@ -152,7 +152,7 @@ export class MCPOAuthClient {
 			const authURL = buildAuthorizationURL(authServerMetadata.authorization_endpoint, {
 				response_type: "code",
 				client_id: clientId,
-				redirect_uri: this.config.redirect_uri,
+				redirect_uri: this.config.redirect_uris[0], // Use first redirect URI for authorization
 				scope: this.config.scope,
 				state,
 				resource: resourceURL,
@@ -422,7 +422,7 @@ export class MCPOAuthClient {
 			client_id: clientId,
 			client_secret: clientSecret,
 			code,
-			redirect_uri: this.config.redirect_uri,
+			redirect_uri: this.config.redirect_uris[0], // Use first redirect URI for token exchange
 			code_verifier: codeVerifier,
 			resource: resourceURL,
 		});
@@ -512,7 +512,7 @@ export class MCPOAuthClient {
 	 */
 	async registerClient(registrationEndpoint: string): Promise<ClientRegistrationResponse> {
 		const registrationRequest: ClientRegistrationRequest = {
-			redirect_uris: [this.config.redirect_uri],
+			redirect_uris: this.config.redirect_uris,
 			token_endpoint_auth_method: "none", // Public client (PKCE)
 			grant_types: ["authorization_code", "refresh_token"],
 			response_types: ["code"],
