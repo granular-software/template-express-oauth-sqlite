@@ -1,0 +1,75 @@
+# Express + OAuth + SQLite Template
+
+MCP server with OAuth2.1 authentication and SQLite database.
+
+## Quick Start
+
+```bash
+git clone <template-repo>
+cd template-express-oauth-sqlite
+cp env.example .env
+# Edit .env with your values
+npm install
+npm run dev
+```
+
+## Environment
+```bash
+JWT_SECRET=your-secure-secret-key
+SERVER_URL=http://localhost:3000
+PORT=3000
+DB_PATH=data/app.db
+```
+
+## Resource Example
+```typescript
+const postResource = createResource({
+  name: "post",
+  schema: PostSchema,
+  uri_template: "posts/{id}",
+  methods: {
+    create: { 
+      handler: async (data, user) => {
+        if (!user) throw new Error("Authentication required");
+        return createPost({ ...data, authorId: user.id });
+      }
+    },
+    list: { 
+      handler: async (_, user) => {
+        if (!user) return getPublicPosts();
+        return getPostsForUser(user.id);
+      }
+    },
+  },
+});
+```
+
+## Handler Pattern
+```typescript
+// OAuth handlers receive user context
+handler: async (data, user) => {
+  if (!user) throw new Error("Authentication required");
+  
+  // user.id, user.username, user.email available
+  return await processDataForUser(data, user);
+}
+```
+
+## Authentication
+```bash
+# Register
+curl -X POST http://localhost:3000/auth/register \
+  -d '{"username":"user","email":"user@example.com","password":"pass"}'
+
+# Login
+curl -X POST http://localhost:3000/auth/login \
+  -d '{"username":"user","password":"pass"}'
+
+# Use token
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+     http://localhost:3000/api/posts
+```
+description:
+globs:
+alwaysApply: false
+---
