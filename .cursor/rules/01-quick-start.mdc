@@ -1,6 +1,6 @@
 # Express + OAuth + SQLite Template
 
-MCP server with OAuth2.1 authentication and SQLite database.
+Production-ready MCP server with OAuth2.1 authentication and SQLite database.
 
 ## Quick Start
 
@@ -10,6 +10,7 @@ cd template-express-oauth-sqlite
 cp env.example .env
 # Edit .env with your values
 npm install
+npm run db:init
 npm run dev
 ```
 
@@ -23,21 +24,21 @@ DB_PATH=data/app.db
 
 ## Resource Example
 ```typescript
-const postResource = createResource({
-  name: "post",
-  schema: PostSchema,
-  uri_template: "posts/{id}",
+const noteResource = createResource({
+  name: "note",
+  schema: NoteSchema,
+  uri_template: "notes/{id}",
   methods: {
     create: { 
       handler: async (data, user) => {
         if (!user) throw new Error("Authentication required");
-        return createPost({ ...data, authorId: user.id });
+        return createNote({ ...data, authorId: user.id });
       }
     },
     list: { 
       handler: async (_, user) => {
-        if (!user) return getPublicPosts();
-        return getPostsForUser(user.id);
+        if (!user) return getPublicNotes();
+        return getNotesForUser(user.id);
       }
     },
   },
@@ -46,11 +47,11 @@ const postResource = createResource({
 
 ## Handler Pattern
 ```typescript
-// OAuth handlers receive user context
+// OAuth handlers receive full user context
 handler: async (data, user) => {
   if (!user) throw new Error("Authentication required");
   
-  // user.id, user.username, user.email available
+  // user.id, user.username, user.email, user.scopes available
   return await processDataForUser(data, user);
 }
 ```
@@ -67,9 +68,9 @@ curl -X POST http://localhost:3000/auth/login \
 
 # Use token
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-     http://localhost:3000/api/posts
+     http://localhost:3000/api/notes
 ```
-description:
-globs:
+description: Quick start guide for Express + OAuth + SQLite template
+globs: ["**/*.ts", "**/*.tsx"]
 alwaysApply: false
 ---

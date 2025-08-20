@@ -1,0 +1,330 @@
+# Zod Schema Design for MCP Servers
+
+## Schema-First Development
+
+Zod schemas are the foundation of your MCP server. They define data validation, type safety, and AI agent understanding.
+
+## Basic Schema Patterns
+
+### Simple Entity Schema
+```typescript
+const NoteSchema = z.object({
+  id: z.string().readonly(),           // Auto-generated, read-only
+  title: z.string().min(1, "Title is required"),
+  content: z.string().min(1, "Content is required"),
+  authorId: z.string().min(1, "Author is required"),
+  createdAt: z.date().readonly(),      // Auto-set, read-only
+  updatedAt: z.date().readonly(),      // Auto-updated, read-only
+});
+
+type Note = z.infer<typeof NoteSchema>;
+```
+
+### Complex Nested Schema
+```typescript
+const UserSchema = z.object({
+  id: z.string().readonly(),
+  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Invalid email format"),
+  profile: z.object({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    bio: z.string().max(500, "Bio must be less than 500 characters").optional(),
+    avatar: z.string().url("Invalid avatar URL").optional(),
+  }),
+  preferences: z.object({
+    notifications: z.boolean().default(true),
+    theme: z.enum(["light", "dark", "auto"]).default("auto"),
+    language: z.string().default("en"),
+  }).default({}),
+  createdAt: z.date().readonly(),
+  updatedAt: z.date().readonly(),
+});
+
+const NoteSchema = z.object({
+  id: z.string().readonly(),
+  title: z.string().min(1, "Title is required"),
+  content: z.string().min(1, "Content is required"),
+  authorId: z.string().min(1, "Author is required"),
+  tags: z.array(z.string()).default([]),
+  status: z.enum(["draft", "published", "archived"]).default("draft"),
+  metadata: z.object({
+    category: z.string().optional(),
+    priority: z.enum(["low", "medium", "high"]).default("medium"),
+    attachments: z.array(z.string().url()).default([]),
+  }).default({}),
+  createdAt: z.date().readonly(),
+  updatedAt: z.date().readonly(),
+});
+```
+
+## Schema Validation Patterns
+
+### Input Validation Schemas
+```typescript
+// Separate schemas for different operations
+const CreateNoteSchema = NoteSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+const UpdateNoteSchema = CreateNoteSchema.partial(); // All fields optional
+
+const NoteQuerySchema = z.object({
+  title: z.string().optional(),
+  content: z.string().optional(),
+  authorId: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  status: z.enum(["draft", "published", "archived"]).optional(),
+  dateFrom: z.string().optional().describe("Filter from date (ISO string)"),
+  dateTo: z.string().optional().describe("Filter to date (ISO string)"),
+  limit: z.number().min(1).max(100).default(20),
+  offset: z.number().min(0).default(0),
+});
+
+// Use in handlers
+create: {
+  description: "Create a new note",
+  inputSchema: CreateNoteSchema,
+  handler: async (data, user) => {
+    // data is fully validated and typed
+    const note = await createNote({ ...data, authorId: user.id });
+    return note;
+  },
+},
+
+search: {
+  description: "Search notes with filters",
+  inputSchema: NoteQuerySchema,
+  handler: async (query, user) => {
+    // query is validated with defaults applied
+    return await searchNotes(query, user.id);
+  },
+}
+```
+
+### Advanced Validation
+```typescript
+const NoteSchema = z.object({
+  id: z.string().readonly(),
+  title: z.string()
+    .min(1, "Title is required")
+    .max(200, "Title must be less than 200 characters")
+    .trim(),
+  content: z.string()
+    .min(10, "Content must be at least 10 characters")
+    .max(10000, "Content must be less than 10,000 characters"),
+  authorId: z.string().min(1, "Author is required"),
+  tags: z.array(z.string())
+    .max(10, "Maximum 10 tags allowed")
+    .transform(tags => tags.map(tag => tag.toLowerCase().trim())),
+  status: z.enum(["draft", "published", "archived"])
+    .default("draft"),
+  metadata: z.record(z.unknown()).optional(), // Flexible metadata
+  createdAt: z.date().readonly(),
+  updatedAt: z.date().readonly(),
+});
+```
+
+## Schema Relationships
+
+### Referential Integrity
+```typescript
+const UserSchema = z.object({
+  id: z.string().readonly(),
+  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Invalid email format"),
+  createdAt: z.date().readonly(),
+});
+
+const NoteSchema = z.object({
+  id: z.string().readonly(),
+  title: z.string().min(1, "Title is required"),
+  content: z.string().min(1, "Content is required"),
+  authorId: z.string().min(1, "Author is required"),
+  createdAt: z.date().readonly(),
+  updatedAt: z.date().readonly(),
+});
+
+// Validate relationships exist
+const validateNoteRelations = async (data: z.infer<typeof NoteSchema>) => {
+  const author = await db.users.findById(data.authorId);
+  
+  if (!author) throw new Error("Author not found");
+  
+  return { author };
+};
+```
+
+### Polymorphic Relationships
+```typescript
+const AttachmentSchema = z.object({
+  id: z.string().readonly(),
+  filename: z.string().min(1, "Filename is required"),
+  mimeType: z.string().min(1, "MIME type is required"),
+  size: z.number().positive("File size must be positive"),
+  url: z.string().url("Invalid URL"),
+  entityType: z.enum(["note", "user", "category"]),
+  entityId: z.string().min(1, "Entity ID is required"),
+  createdAt: z.date().readonly(),
+});
+
+// Validate entity exists based on type
+const validateAttachmentEntity = async (data: z.infer<typeof AttachmentSchema>) => {
+  let entity;
+  
+  switch (data.entityType) {
+    case "note":
+      entity = await db.notes.findById(data.entityId);
+      break;
+    case "user":
+      entity = await db.users.findById(data.entityId);
+      break;
+    case "category":
+      entity = await db.categories.findById(data.entityId);
+      break;
+    default:
+      throw new Error("Invalid entity type");
+  }
+  
+  if (!entity) throw new Error(`${data.entityType} not found`);
+  return entity;
+};
+```
+
+## Schema Transformation and Coercion
+
+### Data Transformation
+```typescript
+const NoteInputSchema = z.object({
+  title: z.string().min(1).transform(title => title.trim()),
+  content: z.string().min(1).transform(content => content.trim()),
+  authorId: z.string().min(1),
+  tags: z.string().transform(str => str.split(',').map(tag => tag.trim())),
+  status: z.string().transform(str => str.toLowerCase()),
+  metadata: z.string().transform(str => JSON.parse(str)), // Coerce JSON string
+});
+
+// Use in handler
+handler: async (rawData, user) => {
+  // Transform and validate input
+  const data = NoteInputSchema.parse(rawData);
+  
+  // data is now properly typed and transformed
+  const note = await createNote(data, user.id);
+  return note;
+}
+```
+
+### Conditional Validation
+```typescript
+const NoteSchema = z.object({
+  id: z.string().readonly(),
+  title: z.string().min(1),
+  content: z.string().min(1),
+  authorId: z.string().min(1),
+  status: z.enum(["draft", "published", "archived"]),
+  
+  // Conditional fields based on status
+  publishedAt: z.date().optional().refine(
+    (publishedAt) => {
+      // Published notes must have publication date
+      return status !== "published" || publishedAt !== undefined;
+    },
+    { message: "Published notes require publication date" }
+  ),
+  
+  // Archived notes have additional requirements
+  archived: z.object({
+    reason: z.string().min(10, "Archive reason required"),
+    archivedBy: z.string().min(1, "Archiver required"),
+    archiveDate: z.date().min(new Date(), "Archive date must be in the future"),
+  }).optional().refine(
+    (archived) => {
+      return status !== "archived" || archived !== undefined;
+    },
+    { message: "Archived notes require archive information" }
+  ),
+});
+```
+
+## Schema Composition and Reuse
+
+### Base Schemas
+```typescript
+const BaseEntitySchema = z.object({
+  id: z.string().readonly(),
+  createdAt: z.date().readonly(),
+  updatedAt: z.date().readonly(),
+});
+
+const AuditableSchema = BaseEntitySchema.extend({
+  createdBy: z.string().min(1),
+  updatedBy: z.string().min(1),
+  version: z.number().positive(),
+});
+
+// Extend base schemas
+const UserSchema = AuditableSchema.extend({
+  username: z.string().min(1),
+  email: z.string().email(),
+  // ... other user fields
+});
+
+const NoteSchema = AuditableSchema.extend({
+  title: z.string().min(1),
+  content: z.string().min(1),
+  authorId: z.string().min(1),
+  // ... other note fields
+});
+```
+
+### Schema Merging
+```typescript
+const CreateNoteSchema = NoteSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+  version: true,
+});
+
+const UpdateNoteSchema = CreateNoteSchema.partial();
+
+// Merge with additional validation
+const CreateNoteWithValidationSchema = CreateNoteSchema.merge(
+  z.object({
+    confirmCreation: z.boolean().refine(
+      (confirm) => confirm === true,
+      { message: "Must confirm note creation" }
+    ),
+    termsAccepted: z.boolean().refine(
+      (accepted) => accepted === true,
+      { message: "Must accept terms and conditions" }
+    ),
+  })
+);
+```
+
+## Best Practices
+
+1. **Descriptive Error Messages**: Use clear, actionable error messages
+2. **Schema Composition**: Build complex schemas from simple, reusable parts
+3. **Input/Output Separation**: Use different schemas for input validation vs output
+4. **Relationship Validation**: Always validate that referenced entities exist
+5. **Type Safety**: Leverage TypeScript inference for compile-time safety
+6. **Performance**: Use `.transform()` for expensive operations, `.refine()` for validation
+7. **Documentation**: Use `.describe()` for AI agent understanding
+8. **Default Values**: Provide sensible defaults where appropriate
+9. **Coercion**: Use `.coerce` for safe type conversions
+10. **Testing**: Test your schemas with various input scenarios
+description: Zod schema design patterns and best practices for MCP servers
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
+description:
+globs:
+alwaysApply: false
+---
