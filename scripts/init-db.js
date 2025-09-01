@@ -45,21 +45,7 @@ const tables = [
     `,
     description: 'User accounts with authentication'
   },
-  {
-    name: 'notes',
-    sql: `
-      CREATE TABLE IF NOT EXISTS notes (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        content TEXT,
-        author_id TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (author_id) REFERENCES oauth_users(id) ON DELETE CASCADE
-      )
-    `,
-    description: 'User notes with author relationship'
-  },
+
   {
     name: 'oauth_clients',
     sql: `
@@ -155,34 +141,19 @@ async function createIndexes() {
   const indexes = [
     {
       name: 'idx_users_email',
-      sql: 'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)',
+      sql: 'CREATE INDEX IF NOT EXISTS idx_users_email ON oauth_users(email)',
       description: 'Email lookup index'
     },
     {
       name: 'idx_users_username', 
-      sql: 'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)',
+      sql: 'CREATE INDEX IF NOT EXISTS idx_users_username ON oauth_users(username)',
       description: 'Username lookup index'
     },
-    {
-      name: 'idx_sessions_userId',
-      sql: 'CREATE INDEX IF NOT EXISTS idx_sessions_userId ON sessions(userId)',
-      description: 'User sessions index'
-    },
-    {
-      name: 'idx_sessions_accessToken',
-      sql: 'CREATE INDEX IF NOT EXISTS idx_sessions_accessToken ON sessions(accessToken)',
-      description: 'Access token lookup index'
-    },
-    {
-      name: 'idx_notes_authorId',
-      sql: 'CREATE INDEX IF NOT EXISTS idx_notes_authorId ON notes(authorId)',
-      description: 'Notes by author index'
-    }
-    ,
+
     { name: 'idx_oauth_clients_id', sql: 'CREATE INDEX IF NOT EXISTS idx_oauth_clients_id ON oauth_clients(id)', description: 'OAuth clients id index' },
     { name: 'idx_oauth_authorization_codes_code', sql: 'CREATE INDEX IF NOT EXISTS idx_oauth_authorization_codes_code ON oauth_authorization_codes(code)', description: 'Auth codes code index' },
-    { name: 'idx_oauth_access_tokens_token', sql: 'CREATE INDEX IF NOT EXISTS idx_oauth_access_tokens_token ON oauth_access_tokens(accessToken)', description: 'Access tokens index' },
-    { name: 'idx_oauth_refresh_tokens_token', sql: 'CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_token ON oauth_refresh_tokens(refreshToken)', description: 'Refresh tokens index' }
+    { name: 'idx_oauth_access_tokens_token', sql: 'CREATE INDEX IF NOT EXISTS idx_oauth_access_tokens_token ON oauth_access_tokens(access_token)', description: 'Access tokens index' },
+    { name: 'idx_oauth_refresh_tokens_token', sql: 'CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_token ON oauth_refresh_tokens(refresh_token)', description: 'Refresh tokens index' }
   ];
   
   for (const index of indexes) {
@@ -213,13 +184,16 @@ async function initDatabase() {
     
     console.log('\n✅ Database initialization completed successfully!');
     console.log('\n📊 Database structure:');
-    console.log('   • users - User accounts and authentication');
-    console.log('   • sessions - OAuth sessions and tokens');
-    console.log('   • notes - User notes with author relationships');
+    console.log('   • oauth_users - User accounts and authentication');
+    console.log('   • oauth_clients - OAuth client metadata');
+    console.log('   • oauth_authorization_codes - OAuth authorization codes');
+    console.log('   • oauth_access_tokens - OAuth access tokens');
+    console.log('   • oauth_refresh_tokens - OAuth refresh tokens');
+
     console.log('\n🔍 Available indexes:');
     console.log('   • Email and username lookups');
-    console.log('   • Session and token lookups');
-    console.log('   • Notes by author');
+    console.log('   • OAuth token and code lookups');
+
     
     console.log('\n💡 Next steps:');
     console.log('   • Start the server: npm run dev');

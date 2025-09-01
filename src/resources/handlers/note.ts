@@ -12,22 +12,29 @@ export const noteResource = createResource({
   uri_template: "notes/{id}",
   methods: {
     get: {
-      handler: async ({ id }) => {
-        return notes.find((note) => note.id === id);
+      handler: async ({ id }, user) => {
+        if (!user) throw new Error("Authentication required");
+        const note = notes.find((note) => note.id === id);
+        if (!note || note.authorId !== user.id) {
+          throw new Error("Note not found or access denied");
+        }
+        return note;
       },
     },
     list: {
-      handler: async () => {
-        return notes;
+      handler: async (_, user) => {
+        if (!user) throw new Error("Authentication required");
+        return notes.filter((note) => note.authorId === user.id);
       },
     },
     create: {
-      handler: async (data) => {
+      handler: async (data, user) => {
+        if (!user) throw new Error("Authentication required");
         const newNote = {
           id: Math.random().toString(36).substr(2, 9),
           title: data.title || "",
           content: data.content || "",
-          authorId: data.authorId || "",
+          authorId: user.id,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -36,10 +43,14 @@ export const noteResource = createResource({
       },
     },
     update: {
-      handler: async ({ id, ...data }) => {
+      handler: async ({ id, ...data }, user) => {
+        if (!user) throw new Error("Authentication required");
         const index = notes.findIndex((note) => note.id === id);
         if (index === -1) {
           throw new Error("Note not found");
+        }
+        if (notes[index].authorId !== user.id) {
+          throw new Error("Access denied");
         }
         const updatedNote = { 
           ...notes[index], 
@@ -51,10 +62,14 @@ export const noteResource = createResource({
       },
     },
     delete: {
-      handler: async ({ id }) => {
+      handler: async ({ id }, user) => {
+        if (!user) throw new Error("Authentication required");
         const index = notes.findIndex((note) => note.id === id);
         if (index === -1) {
           return { success: false };
+        }
+        if (notes[index].authorId !== user.id) {
+          throw new Error("Access denied");
         }
         notes.splice(index, 1);
         return { success: true };
@@ -65,11 +80,13 @@ export const noteResource = createResource({
       inputSchema: z.object({
         query: z.string().describe("Search query"),
       }),
-      handler: async ({ query }) => {
+      handler: async ({ query }, user) => {
+        if (!user) throw new Error("Authentication required");
         return notes.filter(
           (note) =>
-            note.title.toLowerCase().includes(query.toLowerCase()) ||
-            note.content.toLowerCase().includes(query.toLowerCase())
+            note.authorId === user.id &&
+            (note.title.toLowerCase().includes(query.toLowerCase()) ||
+            note.content.toLowerCase().includes(query.toLowerCase()))
         );
       },
     },
